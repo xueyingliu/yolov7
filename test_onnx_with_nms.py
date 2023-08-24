@@ -94,7 +94,7 @@ for i,(batch_id,x0,y0,x1,y1,cls_id,score) in enumerate(outputs):
     name += ' '+str(score)
     print(name)
     cv2.rectangle(image,box[:2],box[2:],color,2)
-    cv2.putText(image,name,(box[0], box[1] - 2),cv2.FONT_HERSHEY_SIMPLEX,1.75,[225, 255, 255],thickness=6)  
+    cv2.putText(image,name,(box[0], box[1] - 2),cv2.FONT_HERSHEY_SIMPLEX,0.6,[225, 255, 255],thickness=2)  
 
 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
