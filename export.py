@@ -18,7 +18,7 @@ from utils.add_nms import RegisterNMS
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', type=str, default='./yolor-csp-c.pt', help='weights path')
+    parser.add_argument('--weights', type=str, default='weights/yolov7-e6.pt', help='weights path')
     parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='image size')  # height, width
     parser.add_argument('--batch-size', type=int, default=1, help='batch size')
     parser.add_argument('--dynamic', action='store_true', help='dynamic ONNX axes')
@@ -155,7 +155,7 @@ if __name__ == '__main__':
                     output_names = ['output']
             else:
                 model.model[-1].concat = True
-
+        print("image shape: ", img.shape)
         torch.onnx.export(model, img, f, verbose=False, opset_version=12, input_names=['images'],
                           output_names=output_names,
                           dynamic_axes=dynamic_axes)

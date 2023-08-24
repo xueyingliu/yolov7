@@ -16,7 +16,8 @@ from utils.general import coco80_to_coco91_class, check_dataset, check_file, che
 from utils.metrics import ap_per_class, ConfusionMatrix
 from utils.plots import plot_images, output_to_target, plot_study_txt
 from utils.torch_utils import select_device, time_synchronized, TracedModel
-
+import onnx
+import onnxruntime as ort
 
 def test(data,
          weights=None,
@@ -61,7 +62,12 @@ def test(data,
         
         if trace:
             model = TracedModel(model, device, imgsz)
-
+    # Load model
+    cuda = torch.cuda.is_available()
+    check_requirements(('onnx', 'onnxruntime-gpu' if cuda else 'onnxruntime'))
+    providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if cuda else ['CPUExecutionProvider']
+    session = ort.InferenceSession("weights/yolov7-e6_without_nms.onnx", providers=providers)
+    onnx_model = session
     # Half
     half = device.type != 'cpu' and half_precision  # half precision only supported on CUDA
     if half:
@@ -111,12 +117,16 @@ def test(data,
         with torch.no_grad():
             # Run model
             t = time_synchronized()
-            out, train_out = model(img, augment=augment)  # inference and training outputs
+            # out, train_out = model(img, augment=augment)  # inference and training outputs
+            im = img.cpu().numpy()  # torch to numpy
+            im = im.astype('float32')
+            pred = onnx_model.run([session.get_outputs()[0].name], {session.get_inputs()[0].name: im})[0]
+            out = torch.from_numpy(pred).reshape(1,-1,85)
             t0 += time_synchronized() - t
 
-            # Compute loss
-            if compute_loss:
-                loss += compute_loss([x.float() for x in train_out], targets)[1][:3]  # box, obj, cls
+            # # Compute loss
+            # if compute_loss:
+            #     loss += compute_loss([x.float() for x in train_out], targets)[1][:3]  # box, obj, cls
 
             # Run NMS
             targets[:, 2:] *= torch.Tensor([width, height, width, height]).to(device)  # to pixels
@@ -139,6 +149,7 @@ def test(data,
                 continue
 
             # Predictions
+            pred = pred.to('cuda')
             predn = pred.clone()
             scale_coords(img[si].shape[1:], predn[:, :4], shapes[si][0], shapes[si][1])  # native-space pred
 
